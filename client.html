@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Client Portal | High-Fledged Financial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase Compat Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { primary: '#4f46e5', secondary: '#0f172a', gold: '#fbbf24', light: '#f8fafc' } } } }
+  </script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; background-color: #f8fafc; }
+    .hide-scroll::-webkit-scrollbar { display: none; }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 10px 40px rgba(0,0,0,0.04); }
+    .premium-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+    .gold-gradient { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); }
+    
+    /* Progress Bar Animation */
+    .progress-line { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+    
+    @keyframes slideUp { 0% { transform: translateY(50px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+    .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    
+    /* Fun Toast */
+    .fun-toast {
+      position: fixed; left: 50%; top: 20px; transform: translateX(-50%) translateY(-20px);
+      background: linear-gradient(135deg, #4f46e5, #3b82f6); color: #fff; font-weight: 800; font-size: 13px; padding: 14px 28px;
+      border-radius: 999px; box-shadow: 0 10px 40px rgba(79,70,229,0.5); z-index: 9999; opacity: 0;
+      animation: funToastIn .5s forwards; max-width: 90vw; text-align: center;
+    }
+    .fun-toast-out { animation: funToastOut .5s forwards; }
+    @keyframes funToastIn { to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    @keyframes funToastOut { to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+  </style>
+</head>
+<body class="text-slate-800 font-sans antialiased pb-24">
+
+  <!-- AUTHENTICATION / LOGIN -->
+  <div id="authScreen" class="fixed inset-0 bg-light z-[100] flex flex-col items-center justify-center p-5 premium-gradient">
+    <div class="bg-white p-8 rounded-[2rem] text-center w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.4)] relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-400"></div>
+      <div class="w-20 h-20 bg-indigo-50 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl font-black shadow-inner">CA</div>
+      <h2 class="text-3xl font-black text-secondary mb-1 tracking-tight">Client Portal</h2>
+      <p class="text-slate-500 font-bold text-xs mb-8 uppercase tracking-widest">High-Fledged Financial</p>
+      
+      <!-- Step 1: Phone -->
+      <div id="authStepPhone">
+        <div class="relative mb-4">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">+91</span>
+          <input type="tel" id="clientPhone" placeholder="Mobile Number" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')" class="w-full text-center pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-xl outline-none focus:border-primary transition-colors">
+        </div>
+        <button onclick="checkClientExists()" class="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 transition-all shadow-lg text-lg">CONTINUE</button>
+      </div>
+
+      <!-- Step 2: PIN (Existing Client) -->
+      <div id="authStepLogin" class="hidden">
+        <p class="text-sm font-bold text-primary mb-4" id="welcomeBackText">Welcome back!</p>
+        <input type="password" id="clientPin" placeholder="Enter 4-Digit PIN" maxlength="4" class="w-full text-center py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-2xl outline-none focus:border-primary mb-4 tracking-[0.5em]">
+        <button onclick="loginClient()" class="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 transition-all shadow-lg">SECURE LOGIN</button>
+      </div>
+
+      <!-- Step 3: Registration (New Client) -->
+      <div id="authStepRegister" class="hidden space-y-4 text-left">
+        <p class="text-sm font-bold text-amber-500 text-center mb-2">First time here? Let's set up your profile.</p>
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Company / Your Name</label><input type="text" id="regName" class="w-full p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-sm outline-none focus:border-primary"></div>
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">GSTIN (Optional)</label><input type="text" id="regGST" class="w-full p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-sm outline-none focus:border-primary uppercase"></div>
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Create 4-Digit PIN</label><input type="password" id="regPin" maxlength="4" placeholder="****" class="w-full p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl font-black text-xl text-center outline-none focus:border-primary tracking-[0.5em]"></div>
+        <button onclick="registerClient()" class="w-full bg-secondary text-white font-black py-4 rounded-xl active:scale-95 transition-all shadow-lg mt-2">CREATE ACCOUNT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN DASHBOARD -->
+  <div id="mainDashboard" class="hidden">
+    <header class="bg-white px-6 py-5 shadow-sm rounded-b-3xl sticky top-0 z-40">
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Welcome Back</p>
+          <h1 class="text-2xl font-black text-secondary leading-none tracking-tight" id="dashClientName">Client Name</h1>
+        </div>
+        <button onclick="logout()" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center font-black text-sm border border-slate-200 hover:bg-slate-200">⎋</button>
+      </div>
+    </header>
+
+    <div class="p-6 max-w-lg mx-auto">
+      <!-- Request Service Button -->
+      <button onclick="document.getElementById('newRequestModal').classList.remove('hidden')" class="w-full gold-gradient text-white p-6 rounded-[2rem] shadow-[0_10px_30px_rgba(217,119,6,0.3)] flex items-center justify-between mb-8 active:scale-95 transition-transform animate-slide-up">
+        <div class="text-left">
+          <h3 class="font-black text-xl mb-1">Request New Service</h3>
+          <p class="text-xs font-semibold text-white/80">Upload documents directly to your CA.</p>
+        </div>
+        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl font-black backdrop-blur-sm">+</div>
+      </button>
+
+      <h2 class="text-lg font-black text-secondary mb-4 uppercase tracking-widest text-[11px]">Your Active Filings & Tasks</h2>
+      <div id="activeWorkList" class="space-y-5 pb-10">
+        <div class="text-center p-8 text-slate-400 font-bold text-sm bg-white rounded-3xl border border-slate-100">Loading your data...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW REQUEST MODAL -->
+  <div id="newRequestModal" class="hidden fixed inset-0 z-[120] flex items-end justify-center bg-secondary/80 backdrop-blur-sm sm:items-center sm:p-5">
+    <div class="bg-white rounded-t-[2rem] sm:rounded-[2rem] p-6 w-full max-w-md shadow-2xl relative transition-transform transform translate-y-0">
+      <button onclick="document.getElementById('newRequestModal').classList.add('hidden')" class="absolute top-4 right-4 w-8 h-8 bg-slate-100 text-slate-500 rounded-full font-black flex items-center justify-center hover:bg-slate-200">✕</button>
+      <div class="w-12 h-12 bg-indigo-50 text-primary rounded-xl flex items-center justify-center text-2xl mb-4">📄</div>
+      <h3 class="font-black text-2xl text-secondary mb-1">New Service Request</h3>
+      <p class="text-xs text-slate-500 font-semibold mb-6">Select a service and upload your files.</p>
+      
+      <div class="space-y-4 mb-6">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Service Type</label>
+          <select id="reqType" class="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-sm outline-none focus:border-primary transition-colors">
+            <option>GST GSTR-3B Filing</option><option>GST GSTR-1 Filing</option><option>Income Tax Return (ITR)</option><option>Audit Prep</option><option>Other Request</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Upload Documents (PDF, JPG) via Phone</label>
+          <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:bg-indigo-50 hover:border-primary transition-colors cursor-pointer relative">
+            <input type="file" id="reqDocs" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="document.getElementById('fileNameDisplay').innerText = this.files.length > 0 ? this.files[0].name : 'No file chosen'">
+            <span class="text-3xl mb-2 block">📁</span>
+            <p class="text-xs font-bold text-primary" id="fileNameDisplay">Tap here to select file from phone</p>
+            <p class="text-[9px] font-semibold text-slate-400 mt-1">Direct secure upload to CA's Drive</p>
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Additional Notes (Optional)</label>
+          <textarea id="reqNotes" rows="2" class="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl font-semibold text-sm outline-none focus:border-primary resize-none" placeholder="Any specific instructions?"></textarea>
+        </div>
+      </div>
+      <button onclick="submitClientRequest()" id="btnSubmitReq" class="w-full bg-primary text-white font-black py-4 rounded-xl active:scale-95 transition-transform shadow-lg">SUBMIT REQUEST</button>
+    </div>
+  </div>
+
+  <!-- PAYMENT MODAL -->
+  <div id="paymentModal" class="hidden fixed inset-0 z-[130] flex items-center justify-center bg-secondary/90 backdrop-blur-md p-5">
+    <div class="bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl relative text-center">
+      <button onclick="document.getElementById('paymentModal').classList.add('hidden')" class="absolute top-4 right-4 w-8 h-8 bg-slate-100 text-slate-500 rounded-full font-black flex items-center justify-center hover:bg-slate-200">✕</button>
+      <div class="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">₹</div>
+      <h3 class="font-black text-2xl text-secondary mb-1">Clear Invoice</h3>
+      <p class="text-xs text-slate-500 font-semibold mb-6">Scan QR with any UPI app to pay directly.</p>
+      
+      <div class="bg-white p-4 rounded-2xl inline-block shadow-[0_0_20px_rgba(16,185,129,0.3)] mb-4 border-2 border-emerald-400">
+        <!-- Exact Paytm UPI Generation -->
+        <img id="clientUpiQR" src="" class="w-48 h-48 object-contain">
+      </div>
+      <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Amount Due</p>
+      <p class="text-4xl font-black text-emerald-600 mb-6" id="clientPayAmount">₹0</p>
+      
+      <!-- Deep Link Payment Intent -->
+      <a id="clientGpayLink" href="#" class="block w-full bg-secondary hover:bg-slate-800 active:scale-95 text-white py-4 rounded-xl font-black text-sm transition-transform shadow-lg flex items-center justify-center gap-2">
+        📱 Open UPI App (PhonePe / GPay)
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // --- EXACT FIREBASE CONFIGURATION (WITH YOUR KEYS) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyD1w2KR-E26XvY2h_RZYz2Q0RrkUnrMe8M",
+      authDomain: "caautomation-d92b7.firebaseapp.com",
+      projectId: "caautomation-d92b7",
+      storageBucket: "caautomation-d92b7.firebasestorage.app",
+      messagingSenderId: "217601242413",
+      appId: "1:217601242413:web:89a9a2c7b16c72f5750fa4",
+      measurementId: "G-6VKCWCYCZR",
+      databaseURL: "https://caautomation-d92b7-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // --- CRITICAL VARIABLES ---
+    const DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbzfwQcQR9J4VNONAJJj8izslFFRHsaBHeo0eX7tL13876b9se04cPwQs6_wMzV0jxC1tw/exec";
+    const UPI_ID = "paytm.s2fr1gu@pyt"; 
+    const UPI_PAYEE_NAME = "High-Fledged Financial CA";
+
+    let loggedInClient = null;
+    let clientId = null;
+
+    // --- UTILS ---
+    function showFunToast(text){
+      const t = document.createElement('div'); t.className = 'fun-toast'; t.innerText = text; document.body.appendChild(t);
+      setTimeout(() => t.classList.add('fun-toast-out'), 3000); setTimeout(() => t.remove(), 3500);
+    }
+    
+    window.logout = function() {
+      localStorage.removeItem('ca_client_id');
+      location.reload();
+    };
+
+    // --- AUTHENTICATION FLOW ---
+    if(localStorage.getItem('ca_client_id')) {
+      clientId = localStorage.getItem('ca_client_id');
+      db.ref(`clients/${clientId}`).once('value', snap => {
+        if(snap.exists()) {
+          loggedInClient = snap.val();
+          initDashboard();
+        } else {
+          localStorage.removeItem('ca_client_id');
+        }
+      });
+    }
+
+    window.checkClientExists = function() {
+      const phone = document.getElementById('clientPhone').value;
+      if(phone.length !== 10) return alert("Enter a valid 10-digit number.");
+      
+      db.ref('clients').orderByChild('phone').equalTo(phone).once('value', snap => {
+        document.getElementById('authStepPhone').classList.add('hidden');
+        if(snap.exists()) {
+          const data = snap.val();
+          clientId = Object.keys(data)[0];
+          loggedInClient = data[clientId];
+          document.getElementById('welcomeBackText').innerText = `Welcome back, ${loggedInClient.name.split(' ')[0]}!`;
+          document.getElementById('authStepLogin').classList.remove('hidden');
+        } else {
+          document.getElementById('authStepRegister').classList.remove('hidden');
+        }
+      });
+    };
+
+    window.loginClient = function() {
+      const pin = document.getElementById('clientPin').value;
+      if(pin === loggedInClient.pin) {
+        localStorage.setItem('ca_client_id', clientId);
+        initDashboard();
+      } else {
+        alert("Incorrect PIN. Try again.");
+      }
+    };
+
+    window.registerClient = function() {
+      const n = document.getElementById('regName').value.trim();
+      const g = document.getElementById('regGST').value.trim();
+      const p = document.getElementById('regPin').value.trim();
+      const phone = document.getElementById('clientPhone').value;
+
+      if(!n || p.length !== 4) return alert("Name and 4-digit PIN are required.");
+
+      clientId = 'client_' + Date.now();
+      const newClient = { name: n, phone: phone, gstin: g, pin: p, createdAt: Date.now() };
+      
+      db.ref(`clients/${clientId}`).set(newClient).then(() => {
+        loggedInClient = newClient;
+        localStorage.setItem('ca_client_id', clientId);
+        initDashboard();
+      });
+    };
+
+    // --- DASHBOARD INIT ---
+    function initDashboard() {
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('mainDashboard').classList.remove('hidden');
+      document.getElementById('dashClientName').innerText = loggedInClient.name;
+      showFunToast(`Welcome, ${loggedInClient.name.split(' ')[0]}!`);
+      listenToMyWork();
+    }
+
+    // --- LIVE WORK TRACKER ---
+    function listenToMyWork() {
+      db.ref('work_items').orderByChild('clientId').equalTo(clientId).on('value', snap => {
+        const list = document.getElementById('activeWorkList');
+        list.innerHTML = '';
+        const data = snap.val();
+        
+        if(!data) {
+          list.innerHTML = `<div class="text-center p-8 bg-white rounded-3xl border border-slate-100 shadow-sm"><p class="text-3xl mb-2">📂</p><p class="text-slate-500 font-bold text-sm">No active filings. Request a service above!</p></div>`;
+          return;
+        }
+
+        Object.entries(data).sort((a,b)=>b[1].createdAt - a[1].createdAt).forEach(([workId, w]) => {
+          
+          let step = 1;
+          if(w.status === 'Processing' || w.status === 'Returned') step = 2;
+          if(w.status === 'CA Review') step = 3;
+          if(w.status === 'Filed & Completed' || w.status === 'Payment Pending') step = 4;
+
+          const progressWidth = step === 1 ? '15%' : (step === 2 ? '50%' : (step === 3 ? '85%' : '100%'));
+          
+          let alertBox = '';
+          if(w.status === 'Waiting for Client') {
+            alertBox = `<div class="mt-4 bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center justify-between"><span class="text-xs font-bold text-amber-700">⚠️ CA needs additional documents.</span><button onclick="document.getElementById('newRequestModal').classList.remove('hidden')" class="bg-amber-500 text-white text-[10px] font-black px-3 py-1.5 rounded-lg shadow-sm">UPLOAD</button></div>`;
+          }
+
+          let paymentBox = '';
+          if(w.status === 'Payment Pending') {
+            const fee = w.invoiceAmount || 0;
+            paymentBox = `<button onclick="openPaymentModal(${fee})" class="mt-4 w-full bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between active:scale-95 transition-transform"><span class="text-xs font-black text-emerald-700">🧾 INVOICE DUE: ₹${fee}</span><span class="bg-emerald-500 text-white text-[10px] font-black px-3 py-1.5 rounded-lg shadow-sm">PAY NOW</span></button>`;
+          }
+
+          list.innerHTML += `
+            <div class="glass-card p-6 rounded-3xl animate-slide-up">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Task Reference: #${workId.slice(-5)}</p>
+                  <h4 class="font-black text-lg text-secondary">${w.workType}</h4>
+                </div>
+                <span class="text-[9px] font-black bg-slate-100 text-slate-600 px-2 py-1 rounded uppercase shadow-sm">${w.status}</span>
+              </div>
+              
+              <!-- Premium Progress Bar -->
+              <div class="relative mt-6 mb-2">
+                <div class="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 z-0 rounded-full"></div>
+                <div class="absolute top-1/2 left-0 h-1 bg-primary -translate-y-1/2 z-0 rounded-full progress-line" style="width: ${progressWidth};"></div>
+                <div class="flex justify-between relative z-10">
+                  <div class="w-4 h-4 rounded-full ${step>=1 ? 'bg-primary border-4 border-white' : 'bg-slate-200'}"></div>
+                  <div class="w-4 h-4 rounded-full ${step>=2 ? 'bg-primary border-4 border-white' : 'bg-slate-200'}"></div>
+                  <div class="w-4 h-4 rounded-full ${step>=3 ? 'bg-primary border-4 border-white' : 'bg-slate-200'}"></div>
+                  <div class="w-4 h-4 rounded-full ${step>=4 ? 'bg-emerald-500 border-4 border-white' : 'bg-slate-200'}"></div>
+                </div>
+                <div class="flex justify-between text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2 px-1">
+                  <span>Submitted</span><span class="ml-2">Processing</span><span class="mr-2">CA Review</span><span>Filed</span>
+                </div>
+              </div>
+
+              ${alertBox}
+              ${paymentBox}
+            </div>`;
+        });
+      });
+    }
+
+    // --- SUBMIT NEW REQUEST & UPLOAD ---
+    window.submitClientRequest = async function() {
+      const type = document.getElementById('reqType').value;
+      const notes = document.getElementById('reqNotes').value;
+      const fileInput = document.getElementById('reqDocs');
+      
+      const btn = document.getElementById('btnSubmitReq');
+      btn.innerText = "UPLOADING SECURELY TO CA DRIVE..."; btn.disabled = true;
+
+      let driveLink = null;
+      if(fileInput.files.length > 0) {
+        try {
+          const file = fileInput.files[0];
+          const base64 = await new Promise(res => {
+            const reader = new FileReader();
+            reader.onload = e => res(e.target.result.split(',')[1]);
+            reader.readAsDataURL(file);
+          });
+          
+          const formData = new URLSearchParams();
+          formData.append('fileName', `${loggedInClient.name}_${file.name}`);
+          formData.append('mimeType', file.type);
+          formData.append('fileData', base64);
+          
+          const res = await fetch(DRIVE_UPLOAD_URL, { method: 'POST', body: formData });
+          const json = await res.json();
+          if(json.success) driveLink = json.fileUrl;
+        } catch(e) {
+          console.error("Upload failed", e);
+        }
+      }
+
+      btn.innerText = "SAVING...";
+      const workId = 'work_' + Date.now();
+      
+      const d = new Date(); d.setDate(d.getDate() + 7);
+      const dueDateStr = d.toISOString().split('T')[0];
+
+      await db.ref(`work_items/${workId}`).set({
+        clientId: clientId, clientName: loggedInClient.name, workType: type,
+        status: "Pending Assignment", priority: "Normal", dueDate: dueDateStr,
+        assignedTo: "", createdAt: Date.now(), documentLink: driveLink || "", clientNote: notes
+      });
+
+      document.getElementById('newRequestModal').classList.add('hidden');
+      btn.innerText = "SUBMIT REQUEST"; btn.disabled = false;
+      document.getElementById('reqNotes').value = ''; fileInput.value = ''; document.getElementById('fileNameDisplay').innerText = 'Tap here to select file from phone';
+      
+      showFunToast("Request Submitted Successfully! 🎉");
+    };
+
+    // --- PAYMENT GATEWAY (UPI GENERATOR) ---
+    window.openPaymentModal = function(amount) {
+      document.getElementById('paymentModal').classList.remove('hidden');
+      document.getElementById('clientPayAmount').innerText = `₹${amount}`;
+      
+      // Encodes exactly to paytm.s2fr1gu@pyt with exact invoice amount
+      const upiString = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(UPI_PAYEE_NAME)}&am=${amount}&cu=INR`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}&margin=10`;
+      
+      document.getElementById('clientUpiQR').src = qrUrl;
+      document.getElementById('clientGpayLink').href = upiString;
+    };
+  </script>
+</body>
+</html>
