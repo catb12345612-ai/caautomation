@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Client Portal | High-Fledged Financial</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase Compat Libraries -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <script>
@@ -14,7 +15,12 @@
     body { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; background-color: #f8fafc; }
     .hide-scroll::-webkit-scrollbar { display: none; }
     .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.8); box-shadow: 0 15px 35px rgba(0,0,0,0.05); }
-    .premium-gradient { background: radial-gradient(circle at 10% 20%, rgb(15, 23, 42) 0%, rgb(30, 41, 59) 90%); }
+    
+    /* CA Themed Premium Backgrounds */
+    .premium-bg { 
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.95) 100%), url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=1920&auto=format&fit=crop') no-repeat center center fixed;
+      background-size: cover;
+    }
     .gold-gradient { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); }
     .progress-line { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
     
@@ -35,7 +41,7 @@
 <body class="text-slate-800 font-sans antialiased pb-28">
 
   <!-- AUTHENTICATION / LOGIN -->
-  <div id="authScreen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center p-5 premium-gradient overflow-hidden">
+  <div id="authScreen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center p-5 premium-bg overflow-hidden">
     <div class="absolute top-[-10%] right-[-10%] w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-accent/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -73,8 +79,8 @@
     
     <!-- Developer Footer for Login Page -->
     <a href="https://catb12345612-ai.github.io/Syed-Zeeshaan-Ali-High-Fledged-Engineering-And-Digital-Tech-Solutions-Site/" target="_blank" class="absolute bottom-8 z-10 flex flex-col items-center justify-center group cursor-pointer transition-all hover:scale-105">
-      <span class="text-[10px] text-slate-400/80 uppercase tracking-widest mb-1 font-bold">Engineered By</span>
-      <span class="text-sm font-black text-accent/90 tracking-wide drop-shadow-[0_0_10px_rgba(56,189,248,0.3)]">High-Fledged Engineering</span>
+      <span class="text-[10px] text-slate-400/80 uppercase tracking-widest mb-1 font-bold drop-shadow-md">Engineered By</span>
+      <span class="text-sm font-black text-accent/90 tracking-wide drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">High-Fledged Engineering</span>
     </a>
   </div>
 
@@ -183,7 +189,7 @@
     const db = firebase.database();
 
     // --- CRITICAL VARIABLES ---
-    const DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbzdY0Pw5Qz7YZMH4UC_XGi2O76SjL0AWo2XaSGxUTcBp34hbMQSl-H2FPE5MWVE_5K2_w/exec";
+    const DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbzfwQcQR9J4VNONAJJj8izslFFRHsaBHeo0eX7tL13876b9se04cPwQs6_wMzV0jxC1tw/exec";
     const UPI_ID = "paytm.s2fr1gu@pyt"; 
     const UPI_PAYEE_NAME = "High-Fledged Financial CA";
 
