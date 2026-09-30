@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CA Office Workspace | High-Fledged Solutions</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase Compat Libraries (Required for db.ref to work) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { primary: '#4f46e5', secondary: '#0f172a', light: '#f8fafc' } } } }
+  </script>
+  <style>
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 10px 30px rgba(0,0,0,0.03); }
+    .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
+    .bg-gradient-primary { background: linear-gradient(135deg, #4f46e5, #3b82f6); }
+    .hide-scroll::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body class="bg-light text-slate-800 font-sans antialiased overflow-hidden">
+
+  <!-- Login Screen -->
+  <div id="loginScreen" class="fixed inset-0 bg-secondary z-[100] flex flex-col items-center justify-center p-5">
+    <div class="bg-white p-10 rounded-[2rem] text-center w-full max-w-md shadow-2xl">
+      <div class="w-20 h-20 bg-indigo-50 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl font-black shadow-inner">CA</div>
+      <h2 class="text-3xl font-black text-slate-900 mb-2">Workspace Login</h2>
+      <p class="text-slate-500 font-bold text-sm mb-8 uppercase tracking-widest">Office Management System</p>
+      <input type="password" id="sysPin" placeholder="Enter Staff PIN" class="w-full text-center p-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-2xl outline-none focus:border-primary mb-6 tracking-[0.5em] transition-colors">
+      <button onclick="attemptLogin()" class="w-full bg-gradient-primary text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition-transform text-lg">SECURE LOGIN</button>
+    </div>
+  </div>
+
+  <div class="flex h-screen hidden" id="mainLayout">
+    <!-- Sidebar -->
+    <aside class="w-72 bg-secondary text-white flex flex-col shadow-2xl z-20">
+      <div class="p-6 border-b border-white/10">
+        <h1 class="font-black text-2xl tracking-tight text-white">Office<span class="text-primary">Desk</span></h1>
+        <p class="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest" id="staffNameDisplay">Logged out</p>
+        <span id="roleBadge" class="inline-block mt-1 text-[9px] font-black bg-primary/20 text-indigo-300 px-2 py-0.5 rounded uppercase"></span>
+      </div>
+      <nav class="flex-1 p-4 space-y-2 overflow-y-auto hide-scroll">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm bg-primary/20 text-indigo-400 transition-all tab-btn">📊 Dashboard</button>
+        <button onclick="switchTab('workflow')" id="tab-workflow" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/5 transition-all tab-btn">📋 Active Workflow</button>
+        <button onclick="switchTab('clients')" id="tab-clients" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/5 transition-all tab-btn">👥 Client Master</button>
+        <button onclick="switchTab('analytics')" id="tab-analytics" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/5 transition-all tab-btn ca-only hidden">📈 Analytics</button>
+      </nav>
+      <div class="p-6 border-t border-white/10 text-center bg-slate-900/50">
+        <p class="text-[9px] text-slate-500 font-bold mb-3 uppercase tracking-widest">Sys: High-Fledged Engineering</p>
+        <button onclick="location.reload()" class="w-full text-red-400 font-black text-sm bg-red-500/10 py-3 rounded-xl hover:bg-red-500 hover:text-white transition-all">End Session</button>
+      </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto bg-slate-50 relative p-8">
+      
+      <!-- DASHBOARD TAB -->
+      <section id="view-dashboard" class="tab-section">
+        <div class="flex justify-between items-center mb-8">
+          <h2 class="text-3xl font-black text-slate-900 tracking-tight">Today's Overview</h2>
+        </div>
+        
+        <!-- Alerts (Automatic Overdue) -->
+        <div class="glass-card p-6 rounded-3xl border-l-4 border-red-500 mb-8">
+          <h3 class="text-sm font-black text-red-600 uppercase tracking-widest flex items-center gap-2 mb-4">🚨 OVERDUE / DUE SOON ALERTS</h3>
+          <div id="overdueList" class="space-y-3"></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Waiting for Docs</p><p class="text-4xl font-black text-amber-500" id="metric-waiting">0</p></div>
+          <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">In Processing (Staff)</p><p class="text-4xl font-black text-blue-500" id="metric-processing">0</p></div>
+          <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pending CA Review</p><p class="text-4xl font-black text-purple-500" id="metric-review">0</p></div>
+          <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Filed This Week</p><p class="text-4xl font-black text-emerald-500" id="metric-filed">0</p></div>
+        </div>
+      </section>
+
+      <!-- WORKFLOW TAB -->
+      <section id="view-workflow" class="tab-section hidden">
+        <div class="flex justify-between items-center mb-8">
+          <h2 class="text-3xl font-black text-slate-900 tracking-tight">Work Management</h2>
+          <button onclick="document.getElementById('newWorkModal').classList.remove('hidden')" class="bg-gradient-primary text-white px-6 py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+            <span>+</span> Create Work Entry
+          </button>
+        </div>
+
+        <div class="flex gap-4 mb-6">
+          <select id="filterStatus" onchange="renderWorkflow()" class="p-3 rounded-xl border border-slate-200 text-sm font-bold bg-white outline-none focus:border-primary cursor-pointer shadow-sm">
+            <option value="ALL">All Active Work</option>
+            <option value="Pending Assignment">Pending Assignment</option>
+            <option value="Waiting for Client">Waiting for Client Docs</option>
+            <option value="Processing">In Processing (Staff)</option>
+            <option value="CA Review">Pending CA Review</option>
+            <option value="Returned">Returned for Correction</option>
+          </select>
+          <input type="text" id="searchWork" oninput="renderWorkflow()" placeholder="Search client or task..." class="p-3 rounded-xl border border-slate-200 text-sm font-bold bg-white w-72 outline-none focus:border-primary shadow-sm">
+        </div>
+
+        <div id="workflowList" class="grid grid-cols-1 gap-4"></div>
+      </section>
+
+      <!-- CLIENTS TAB -->
+      <section id="view-clients" class="tab-section hidden">
+        <h2 class="text-3xl font-black text-slate-900 mb-8 tracking-tight">Client Master Database</h2>
+        <div class="glass-card rounded-3xl p-6">
+          <div class="flex justify-between items-center mb-6">
+            <input type="text" id="searchClient" oninput="renderClients()" placeholder="Search by name, GSTIN, or phone..." class="p-3 rounded-xl border border-slate-200 text-sm font-bold bg-slate-50 w-96 outline-none focus:border-primary">
+            <button onclick="document.getElementById('newClientModal').classList.remove('hidden')" class="bg-secondary text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-slate-800 transition-colors">Add New Client</button>
+          </div>
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-400 uppercase font-black text-[10px] tracking-widest">
+              <tr><th class="p-4 rounded-tl-xl">Client Name</th><th class="p-4">Phone</th><th class="p-4">GSTIN</th><th class="p-4">Portal PIN</th><th class="p-4 text-right rounded-tr-xl">Action</th></tr>
+            </thead>
+            <tbody id="clientTableBody" class="divide-y divide-slate-100 font-medium"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ANALYTICS TAB -->
+      <section id="view-analytics" class="tab-section hidden">
+        <div class="flex justify-between items-center mb-8">
+          <h2 class="text-3xl font-black text-slate-900 tracking-tight">Revenue & Filing Analytics</h2>
+          <button onclick="window.print()" class="bg-white text-slate-800 border border-slate-200 px-6 py-3 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-colors">🖨 Export Report</button>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div class="bg-slate-900 text-white p-6 rounded-3xl shadow-lg">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Today's Revenue</p>
+            <p id="tallyTotal" class="text-3xl font-black text-white">₹0</p>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl shadow-sm">
+            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Cash Collection</p>
+            <p id="tallyCash" class="text-3xl font-black text-emerald-900">₹0</p>
+          </div>
+          <div class="bg-blue-50 border border-blue-100 p-6 rounded-3xl shadow-sm">
+            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">UPI / Online</p>
+            <p id="tallyUPI" class="text-3xl font-black text-blue-900">₹0</p>
+          </div>
+        </div>
+        <div class="glass-card p-6 rounded-3xl lg:col-span-2 shadow-sm">
+          <h3 class="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest">Revenue Trend (7 Days)</h3>
+          <div class="h-64"><canvas id="revenueTrendChart"></canvas></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Create Client Modal -->
+  <div id="newClientModal" class="hidden fixed inset-0 z-[120] flex items-center justify-center bg-secondary/80 backdrop-blur-sm p-5">
+    <div class="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative">
+      <button onclick="document.getElementById('newClientModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-700 font-black text-xl">✕</button>
+      <h3 class="font-black text-2xl text-slate-900 mb-6 tracking-tight">Add New Client</h3>
+      <div class="space-y-4">
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Entity / Client Name</label><input type="text" id="ncName" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary"></div>
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Phone Number</label><input type="text" id="ncPhone" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary"></div>
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">GSTIN</label><input type="text" id="ncGST" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary"></div>
+        <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Portal Access PIN (4 Digits)</label><input type="password" id="ncPin" maxlength="4" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-sm outline-none focus:border-primary tracking-[0.5em]"></div>
+      </div>
+      <button onclick="createClient()" class="w-full mt-6 bg-primary text-white font-black py-4 rounded-xl active:scale-95 transition-transform shadow-md">SAVE CLIENT</button>
+    </div>
+  </div>
+
+  <!-- Create Work Modal (Front Desk / Manager) -->
+  <div id="newWorkModal" class="hidden fixed inset-0 z-[120] flex items-center justify-center bg-secondary/80 backdrop-blur-sm p-5">
+    <div class="bg-white rounded-3xl p-8 w-full max-w-xl shadow-2xl relative">
+      <button onclick="document.getElementById('newWorkModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-700 font-black text-xl">✕</button>
+      <h3 class="font-black text-2xl text-slate-900 mb-6 tracking-tight">New Intake / Work Request</h3>
+      
+      <div class="space-y-5">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Select Client</label>
+          <select id="nwClient" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-5">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Task Type</label>
+            <select id="nwType" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary">
+              <option>GST GSTR-3B Filing</option><option>GST GSTR-1 Filing</option><option>Income Tax Return (ITR)</option><option>Audit Prep</option><option>Company Incorporation</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Tentative Due Date</label>
+            <input type="date" id="nwDate" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-primary">
+          </div>
+        </div>
+        
+        <div class="border-t border-slate-100 pt-5">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Upload Intake Documents (Drive Auto-Sync)</label>
+          <input type="file" id="nwDocs" class="w-full text-sm font-semibold text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+        </div>
+      </div>
+      <button onclick="createWorkItem()" id="btnCreateWork" class="w-full mt-8 bg-secondary text-white font-black py-4 rounded-xl active:scale-95 transition-transform shadow-lg">REGISTER WORK</button>
+    </div>
+  </div>
+
+  <script>
+    // --- EXACT FIREBASE CONFIGURATION (WITH YOUR KEYS) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyD1w2KR-E26XvY2h_RZYz2Q0RrkUnrMe8M",
+      authDomain: "caautomation-d92b7.firebaseapp.com",
+      projectId: "caautomation-d92b7",
+      storageBucket: "caautomation-d92b7.firebasestorage.app",
+      messagingSenderId: "217601242413",
+      appId: "1:217601242413:web:89a9a2c7b16c72f5750fa4",
+      measurementId: "G-6VKCWCYCZR",
+      databaseURL: "https://caautomation-d92b7-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // --- YOUR SPECIFIC GOOGLE APPS SCRIPT WEBHOOK ---
+    const DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbzfwQcQR9J4VNONAJJj8izslFFRHsaBHeo0eX7tL13876b9se04cPwQs6_wMzV0jxC1tw/exec"; 
+
+    let loggedInUser = null;
+    let allWork = {}, allClients = {}, allStaff = {};
+    let revenueDataByDate = {}, revChart;
+
+    window.attemptLogin = function() {
+      const pin = document.getElementById('sysPin').value.trim();
+      
+      // Temporary System Admin Generator (Will create a master admin pin on first launch)
+      if(pin === 'admin999') {
+        db.ref('staff/admin_temp').set({ name: "System Admin", role: "CA_Manager", pin: "admin999" });
+      }
+
+      db.ref('staff').once('value', snap => {
+        let found = null;
+        snap.forEach(child => { if(child.val().pin === pin) found = { id: child.key, ...child.val() }; });
+        
+        if(found) {
+          loggedInUser = found;
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('mainLayout').classList.remove('hidden');
+          document.getElementById('staffNameDisplay').innerText = found.name;
+          document.getElementById('roleBadge').innerText = found.role.replace('_',' ');
+          
+          if(found.role === 'CA_Manager') document.querySelectorAll('.ca-only').forEach(el => el.classList.remove('hidden'));
+          loadSystemData();
+        } else {
+          alert("Invalid PIN. Access Denied.");
+        }
+      });
+    };
+
+    window.switchTab = function(tab) {
+      document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        if(b.id === `tab-${tab}`) { b.classList.add('bg-primary/20','text-indigo-400'); b.classList.remove('text-slate-400'); }
+        else { b.classList.remove('bg-primary/20','text-indigo-400'); b.classList.add('text-slate-400'); }
+      });
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+    };
+
+    function loadSystemData() {
+      db.ref('clients').on('value', snap => { 
+        allClients = snap.val() || {}; 
+        populateClientDropdown();
+        renderClients();
+      });
+      
+      db.ref('staff').on('value', snap => { allStaff = snap.val() || {}; });
+
+      db.ref('work_items').on('value', snap => {
+        allWork = snap.val() || {};
+        renderWorkflow();
+        updateDashboardMetrics();
+      });
+
+      if(loggedInUser.role === 'CA_Manager') {
+        const today = new Date().toISOString().split('T')[0];
+        db.ref(`ca_revenue/${today}`).on('value', s => {
+          const d = s.val() || { total:0, cash:0, upi:0 };
+          document.getElementById('tallyTotal').innerText = `₹${d.total||0}`;
+          document.getElementById('tallyCash').innerText = `₹${d.cash||0}`;
+          document.getElementById('tallyUPI').innerText = `₹${d.upi||0}`;
+          revenueDataByDate[today] = d.total||0;
+          renderCharts();
+        });
+        
+        // Fetch last 7 days history
+        for(let i=6; i>0; i--){
+          let d = new Date(); d.setDate(d.getDate() - i);
+          let ds = d.toISOString().split('T')[0];
+          db.ref(`ca_revenue/${ds}`).once('value', s=>{ revenueDataByDate[ds] = (s.val()||{}).total||0; renderCharts(); });
+        }
+      }
+    }
+
+    function renderCharts() {
+      const dates = Object.keys(revenueDataByDate).sort().slice(-7);
+      const labels = dates.map(d => new Date(d).toLocaleDateString('en-IN', {weekday:'short', day:'numeric'}));
+      const values = dates.map(d => revenueDataByDate[d] || 0);
+
+      const ctx1 = document.getElementById('revenueTrendChart');
+      if(ctx1) {
+        if(revChart) { revChart.data.labels=labels; revChart.data.datasets[0].data=values; revChart.update(); }
+        else {
+          revChart = new Chart(ctx1.getContext('2d'), {
+            type: 'line', data: { labels, datasets: [{ label: 'Revenue (₹)', data: values, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.1)', fill: true, tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+          });
+        }
+      }
+    }
+
+    window.createClient = function() {
+      const n = document.getElementById('ncName').value.trim();
+      const p = document.getElementById('ncPhone').value.trim();
+      const g = document.getElementById('ncGST').value.trim();
+      const pin = document.getElementById('ncPin').value.trim();
+      
+      if(!n || !p || pin.length !== 4) return alert("Name, Phone, and 4-digit PIN are required.");
+      
+      const cId = 'client_' + Date.now();
+      db.ref(`clients/${cId}`).set({ name: n, phone: p, gstin: g, pin: pin, createdAt: Date.now() })
+        .then(() => {
+          document.getElementById('newClientModal').classList.add('hidden');
+          document.getElementById('ncName').value=''; document.getElementById('ncPhone').value=''; document.getElementById('ncGST').value=''; document.getElementById('ncPin').value='';
+          alert("Client successfully added.");
+        });
+    };
+
+    function populateClientDropdown() {
+      const sel = document.getElementById('nwClient');
+      sel.innerHTML = '<option value="">Select a Client...</option>';
+      Object.entries(allClients).forEach(([id, c]) => {
+        sel.innerHTML += `<option value="${id}">${c.name} (${c.gstin || 'No GST'})</option>`;
+      });
+    }
+
+    function updateDashboardMetrics() {
+      let waiting = 0, processing = 0, review = 0, filed = 0, overdueCount = 0;
+      const overdueContainer = document.getElementById('overdueList');
+      overdueContainer.innerHTML = '';
+      const today = new Date().toISOString().split('T')[0];
+
+      Object.entries(allWork).forEach(([id, w]) => {
+        if(w.status === 'Waiting for Client') waiting++;
+        if(w.status === 'Processing' || w.status === 'Returned') processing++;
+        if(w.status === 'CA Review') review++;
+        if(w.status === 'Filed & Completed' || w.status === 'Payment Pending') filed++;
+
+        if(w.status !== 'Filed & Completed' && w.status !== 'Payment Pending' && w.dueDate < today) {
+          overdueCount++;
+          overdueContainer.innerHTML += `
+            <div class="bg-red-50 p-3 rounded-xl flex justify-between items-center border border-red-100">
+              <div>
+                <p class="font-black text-sm text-red-900">${w.clientName}</p>
+                <p class="text-[10px] font-bold text-red-600 uppercase tracking-widest">${w.workType} · Due: ${w.dueDate}</p>
+              </div>
+              <span class="text-xs font-black text-red-500 bg-white px-2 py-1 rounded shadow-sm">${w.status}</span>
+            </div>`;
+        }
+      });
+
+      if(overdueCount === 0) overdueContainer.innerHTML = `<p class="text-sm font-bold text-slate-500">All clear! No overdue tasks.</p>`;
+      document.getElementById('metric-waiting').innerText = waiting;
+      document.getElementById('metric-processing').innerText = processing;
+      document.getElementById('metric-review').innerText = review;
+      document.getElementById('metric-filed').innerText = filed;
+    }
+
+    window.renderWorkflow = function() {
+      const list = document.getElementById('workflowList');
+      const filter = document.getElementById('filterStatus').value;
+      const search = document.getElementById('searchWork').value.toLowerCase();
+      list.innerHTML = '';
+
+      Object.entries(allWork)
+        .filter(([id, w]) => (filter === 'ALL' || w.status === filter) && w.status !== 'Filed & Completed')
+        .filter(([id, w]) => w.clientName.toLowerCase().includes(search) || w.workType.toLowerCase().includes(search))
+        .sort((a, b) => new Date(a[1].dueDate) - new Date(b[1].dueDate))
+        .forEach(([id, w]) => {
+          
+          let badgeColor = 'bg-slate-100 text-slate-600';
+          if(w.status === 'Waiting for Client') badgeColor = 'bg-amber-100 text-amber-700';
+          if(w.status === 'Processing') badgeColor = 'bg-blue-100 text-blue-700';
+          if(w.status === 'CA Review') badgeColor = 'bg-purple-100 text-purple-700';
+          if(w.status === 'Returned') badgeColor = 'bg-red-100 text-red-700';
+          if(w.status === 'Payment Pending') badgeColor = 'bg-emerald-100 text-emerald-700';
+
+          // Action Buttons
+          let actionHtml = '';
+          if(loggedInUser.role === 'CA_Manager') {
+            if(w.status === 'Pending Assignment') actionHtml = `<button onclick="assignStaff('${id}')" class="bg-primary text-white text-xs font-black px-4 py-2 rounded-lg shadow-sm">Assign Staff</button>`;
+            if(w.status === 'CA Review') actionHtml = `
+              <button onclick="approveAndInvoice('${id}')" class="bg-emerald-500 text-white text-xs font-black px-4 py-2 rounded-lg shadow-sm">✅ Approve & Generate Bill</button>
+              <button onclick="updateStatus('${id}', 'Returned')" class="bg-red-50 text-red-600 text-xs font-black px-4 py-2 rounded-lg border border-red-200">Return to Staff</button>`;
+            if(w.status === 'Payment Pending') actionHtml = `<button onclick="clearPayment('${id}')" class="bg-slate-800 text-white text-xs font-black px-4 py-2 rounded-lg shadow-sm">Mark Paid & Complete</button>`;
+          } 
+          if(loggedInUser.role === 'Staff' || loggedInUser.role === 'CA_Manager') {
+            if(w.status === 'Pending Assignment') actionHtml += `<button onclick="updateStatus('${id}', 'Processing')" class="bg-blue-500 text-white text-xs font-black px-4 py-2 rounded-lg shadow-sm">Start Processing</button>`;
+            if(w.status === 'Processing' || w.status === 'Returned') actionHtml += `<button onclick="updateStatus('${id}', 'CA Review')" class="bg-purple-600 text-white text-xs font-black px-4 py-2 rounded-lg shadow-sm">Submit for Review</button>`;
+          }
+          
+          if(w.status !== 'Waiting for Client' && w.status !== 'CA Review' && w.status !== 'Payment Pending') {
+            actionHtml += `<button onclick="updateStatus('${id}', 'Waiting for Client')" class="bg-amber-50 text-amber-600 text-xs font-black px-3 py-2 rounded-lg ml-2">Pause: Missing Docs</button>`;
+          } else if(w.status === 'Waiting for Client') {
+            actionHtml += `<button onclick="updateStatus('${id}', 'Processing')" class="bg-emerald-50 text-emerald-600 text-xs font-black px-3 py-2 rounded-lg ml-2">Docs Received</button>`;
+          }
+
+          let docLinkBtn = w.documentLink ? `<a href="${w.documentLink}" target="_blank" class="text-[10px] font-black bg-indigo-50 text-primary px-3 py-1.5 rounded uppercase hover:bg-indigo-100">📎 View Docs</a>` : '';
+          let clientNoteTxt = w.clientNote ? `<p class="text-xs text-amber-600 bg-amber-50 p-2 rounded mt-2"><strong>Client Note:</strong> ${w.clientNote}</p>` : '';
+
+          list.innerHTML += `
+            <div class="glass-card p-5 rounded-2xl flex items-center justify-between gap-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-1">
+                  <h4 class="font-black text-lg text-secondary">${w.clientName}</h4>
+                  <span class="status-badge ${badgeColor}">${w.status}</span>
+                </div>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">${w.workType} · Due: <span class="${w.dueDate < new Date().toISOString().split('T')[0] ? 'text-red-500' : 'text-slate-800'}">${w.dueDate}</span></p>
+                ${clientNoteTxt}
+                <div class="mt-3 flex gap-2">
+                  ${docLinkBtn}
+                  <button class="text-[10px] font-black bg-slate-100 text-slate-600 px-3 py-1.5 rounded uppercase hover:bg-slate-200">📝 Notes/History</button>
+                </div>
+              </div>
+              <div class="flex flex-col items-end gap-2">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Assigned: <br><span class="text-slate-800">${allStaff[w.assignedTo]?.name || 'Unassigned'}</span></p>
+                <div class="flex items-center gap-2 mt-2">${actionHtml}</div>
+              </div>
+            </div>`;
+        });
+    };
+
+    window.renderClients = function() {
+      const tbody = document.getElementById('clientTableBody');
+      const search = document.getElementById('searchClient').value.toLowerCase();
+      tbody.innerHTML = '';
+      
+      Object.entries(allClients).filter(([id, c]) => c.name.toLowerCase().includes(search) || (c.gstin||'').toLowerCase().includes(search)).forEach(([id, c]) => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
+            <td class="p-4 font-black text-secondary">${c.name}</td>
+            <td class="p-4 font-bold text-slate-500">${c.phone}</td>
+            <td class="p-4 font-bold text-slate-500">${c.gstin || 'N/A'}</td>
+            <td class="p-4 font-black text-primary">${c.pin}</td>
+            <td class="p-4 text-right"><button class="text-[10px] font-black bg-slate-100 text-slate-600 px-3 py-1.5 rounded uppercase hover:bg-slate-200">View Profile</button></td>
+          </tr>`;
+      });
+    };
+
+    window.updateStatus = function(workId, newStatus) {
+      db.ref(`work_items/${workId}`).update({ status: newStatus });
+      db.ref(`status_history/${workId}`).push({ status: newStatus, changedBy: loggedInUser.name, timestamp: Date.now() });
+    };
+
+    window.approveAndInvoice = function(workId) {
+      const amt = prompt("Work approved! Enter invoice amount (₹) to send to client portal:");
+      if(amt && !isNaN(amt)) {
+        db.ref(`work_items/${workId}`).update({ status: 'Payment Pending', invoiceAmount: Number(amt) });
+        alert(`Invoice for ₹${amt} sent to client's mobile portal.`);
+      }
+    };
+
+    window.clearPayment = function(workId) {
+      const amt = allWork[workId].invoiceAmount || 0;
+      const d = new Date().toISOString().split('T')[0];
+      
+      db.ref(`ca_revenue/${d}`).transaction(data => {
+        let curr = data || { total: 0, cash: 0, upi: 0 };
+        curr.total += Number(amt);
+        curr.upi += Number(amt); 
+        return curr;
+      });
+
+      db.ref(`work_items/${workId}`).update({ status: 'Filed & Completed' });
+      alert("Payment recorded and task completely archived!");
+    };
+
+    window.assignStaff = function(workId) {
+      const staffList = Object.entries(allStaff).filter(([id, s]) => s.role === 'Staff').map(([id, s]) => `${id}: ${s.name}`).join('\n');
+      const staffId = prompt(`Enter Staff ID to assign:\n\n${staffList}`);
+      if(staffId && allStaff[staffId]) {
+        db.ref(`work_items/${workId}`).update({ assignedTo: staffId, status: 'Processing' });
+      }
+    };
+
+    window.createWorkItem = async function() {
+      const cId = document.getElementById('nwClient').value;
+      const type = document.getElementById('nwType').value;
+      const date = document.getElementById('nwDate').value;
+      const fileInput = document.getElementById('nwDocs');
+      
+      if(!cId || !date) return alert("Select client and due date.");
+      
+      const btn = document.getElementById('btnCreateWork');
+      btn.innerText = "UPLOADING TO DRIVE..."; btn.disabled = true;
+
+      let driveLink = null;
+      if(fileInput.files.length > 0) {
+        try {
+          const file = fileInput.files[0];
+          const base64 = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result.split(',')[1]);
+            reader.readAsDataURL(file);
+          });
+          
+          const formData = new URLSearchParams();
+          formData.append('fileName', file.name);
+          formData.append('mimeType', file.type);
+          formData.append('fileData', base64);
+          
+          const res = await fetch(DRIVE_UPLOAD_URL, { method: 'POST', body: formData });
+          const json = await res.json();
+          if(json.success) driveLink = json.fileUrl;
+        } catch(e) {
+          console.error("Drive upload failed", e);
+        }
+      }
+
+      btn.innerText = "SAVING DATABASE...";
+      const workId = 'work_' + Date.now();
+      await db.ref(`work_items/${workId}`).set({
+        clientId: cId, clientName: allClients[cId].name, workType: type,
+        status: "Pending Assignment", priority: "Normal", dueDate: date,
+        assignedTo: "", createdAt: Date.now(), documentLink: driveLink || ""
+      });
+
+      document.getElementById('newWorkModal').classList.add('hidden');
+      btn.innerText = "REGISTER WORK"; btn.disabled = false;
+      document.getElementById('nwDate').value = ''; fileInput.value = '';
+      alert("Work successfully created!");
+    };
+  </script>
+</body>
+</html>
